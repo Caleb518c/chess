@@ -14,13 +14,45 @@ export default function App() {
 
     if (move) {
       setCurrentPosition(new Chess(currentPosition.fen()));
-      console.log(currentPosition.fen());
-      computerMove("e5");
-      computerMove("d5");
-      console.log("Eval: " + evaluate(currentPosition.fen()));
+      computerMove(generateMove());
       return true;
     } else {
       return false;
+    }
+  };
+
+  const generateMove = (): string => {
+    let bestMove = "";
+    let currentEval = evaluate(currentPosition.fen());
+
+    const legalMoves: string[] = currentPosition.moves();
+
+    for (let i = 0; i < legalMoves.length; i++) {
+      // This has to be done so that the currentPosition object is not modified
+      // THIS IS VERY IMORTANT
+      // REMEMBER TO DO THIS EVERYTIME!!!
+      let futurePosition = new Chess(currentPosition.fen());
+
+      // Stops the function from returning a move if it is white to move,
+      // preventing the engine from moving for the player
+      if (/w/.test(futurePosition.fen())) {
+        return "";
+      }
+
+      futurePosition.move(legalMoves[i]);
+
+      if (evaluate(futurePosition.fen()) < currentEval) {
+        currentEval = evaluate(futurePosition.fen());
+        bestMove = legalMoves[i];
+      }
+    }
+
+    // Makes the engine choose a random move in the case that all moves are equal
+    if (bestMove === "") {
+      const randomIndex = Math.floor(Math.random() * legalMoves.length);
+      return legalMoves[randomIndex];
+    } else {
+      return bestMove;
     }
   };
 
