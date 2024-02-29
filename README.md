@@ -1,6 +1,6 @@
 ToDo: 
   Short term:
-    - Allow computer to play checkmate
+    - Allow computer to play checkmate <br>
     - Provide message for when checkmate is played
     - Make the last move highlighted allways show for black (for some reason it doesn't highlight blacks last move sometime)
 
