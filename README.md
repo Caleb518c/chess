@@ -1,4 +1,4 @@
-![<img width="30px" />](https://github.com/caleb518c/chess/blob/main/public/favicon.ico?raw=true)
+![<img src="https://github.com/Caleb518c/chess/assets/104874097/d334332f-a359-4e5b-998b-dbc01de7e1ee" width="30px" />](https://github.com/caleb518c/chess/blob/main/public/favicon.ico?raw=true)
 
 
 
