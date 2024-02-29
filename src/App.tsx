@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Chessboard } from "react-chessboard";
-import { Chess, PAWN } from "chess.ts";
+import { Chess, Piece, Move, PartialMove } from "chess.ts";
 import "./App.css";
 
 export default function App() {
   const [currentPosition, setCurrentPosition] = useState(new Chess());
+  const [moveList, setMoveList] = useState<Move[]>([]);
+  const [selectedSquare, setSelectedSquare] = useState<string>("");
+  const [startingSquare, setStartingSquare] = useState<string>("");
+  const [targetSquare, setTargetSquare] = useState<string>("");
 
   // --- Piece-Square Tables ---
   // These tables map out a chess board from white's perspective reading each square
@@ -138,6 +142,25 @@ export default function App() {
     0, 0, 0, 0, -30, -30, -50, -30, -30, -30, -30, -30, -30, -50,
   ];
 
+  const onSquareRightClick = (square: string) => {
+    setSelectedSquare(square);
+  };
+
+  const onSquareClick = (square: string) => {
+    setSelectedSquare("");
+  };
+
+  const colorLastMove = (move: Move) => {
+    setSelectedSquare(""); //This just removes any squares the user colored
+    setStartingSquare(move.from);
+    setTargetSquare(move.to);
+    appendMoveList(move);
+  };
+
+  const appendMoveList = (move: Move) => {
+    moveList.push(move);
+  };
+
   const onDrop = (sourceSquare: string, targetSquare: string): boolean => {
     const move = currentPosition.move({
       from: sourceSquare,
@@ -145,81 +168,147 @@ export default function App() {
     });
 
     if (move) {
+      const childPosition = new Chess(currentPosition.fen());
+      colorLastMove(move);
+
+      if (isACapture(move.san)) {
+        window.alert("This move is a capture");
+        if (pieceIsHanging(childPosition.fen(), move.san)) {
+          window.alert("This piece was hanging");
+        }
+      }
+
+      // This is for the failsafe below
+      const currentPositionCopy: Chess = new Chess(currentPosition.fen());
+
       setCurrentPosition(new Chess(currentPosition.fen()));
       computerMove();
+
+      // This acts as a failsafe in the case where the computer doesn't play a move for some reason,
+      // which it likes to do and I have no idea why...
+      if (currentPosition.fen() === currentPositionCopy.fen()) {
+        console.error("No move selected. First legal move played instead.");
+        currentPosition.move(currentPosition.moves()[0]);
+        setCurrentPosition(new Chess(currentPosition.fen()));
+      }
       return true;
     } else {
       return false;
     }
   };
 
-  const minimax = (
-    position: Chess,
-    depth: number,
-    maximizingPlayer: boolean
-  ): number => {
-    console.log("Entered minimax");
-    console.log("Depth: " + depth);
-
-    // Quits the search and returns the best eval if either:
-    // 1. The game is over (checkmate, or draw)
-    // 2. We hit the end of the specified depth
-    if (depth === 0 || position.gameOver()) {
-      return evaluate(position.fen());
-    }
-
-    // If it is white to move
-    if (maximizingPlayer) {
-      let maxScore: number = Number.MIN_SAFE_INTEGER;
-      for (const move of position.moves()) {
-        // Creates a copy of the current position and makes the current move
-        let childPosition: Chess = new Chess(position.fen());
-        childPosition.move(move);
-        // Runs minimax on the child position to find the score
-        let score: number = minimax(childPosition, depth - 1, false);
-        maxScore = Math.max(maxScore, score);
-      }
-      return maxScore;
-    } else {
-      let minScore: number = Number.MAX_SAFE_INTEGER;
-      for (const move of position.moves()) {
-        // Creates a copy of the current position and makes the current move
-        let childPosition: Chess = new Chess(position.fen());
-        childPosition.move(move);
-        // Runs minimax on the child position to find the score
-        let score: number = minimax(childPosition, depth - 1, true);
-        minScore = Math.min(minScore, score);
-      }
-      return minScore;
-    }
-    console.error(
-      "Something has gone horribly wrong and the top case of recursion was never hit"
-    );
-    return -1;
-  };
-
   const computerMove = () => {
-    const bestScore: number = minimax(currentPosition, 2, true);
+    const bestScore: number = alphaBetaMax(
+      currentPosition,
+      2,
+      Number.MIN_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER
+    );
+
+    console.log("All legal moves: " + currentPosition.moves());
 
     for (const move of currentPosition.moves()) {
       let childPosition: Chess = new Chess(currentPosition.fen());
       childPosition.move(move);
+
+      console.warn("Move: " + move);
+      console.log("Is a capture: " + isACapture(move));
+      console.log(
+        "Is hanging: " +
+          pieceIsHanging(
+            childPosition.fen(),
+            move.replace(/[pnbrqkPNBRQKx+#]/g, "")
+          )
+      );
+
+      // This forces to engine to take a piece if it is hanging
+      if (isACapture(move) && pieceIsHanging(childPosition.fen(), move)) {
+        window.alert("The engine sees a peice that is hanging");
+        // @ts-ignore
+        const moveObj: Move = currentPosition.move(move);
+        colorLastMove(moveObj);
+        setCurrentPosition(new Chess(currentPosition.fen()));
+        return;
+      }
+
       if (evaluate(childPosition.fen()) === bestScore) {
-        currentPosition.move(move);
+        // @ts-ignore
+        const moveObj: Move = currentPosition.move(move);
+        colorLastMove(moveObj);
         setCurrentPosition(new Chess(currentPosition.fen()));
         return;
       }
     }
   };
 
+  const alphaBetaMax = (
+    position: Chess,
+    depth: number,
+    alpha: number,
+    beta: number
+  ): number => {
+    if (depth === 0 || position.gameOver()) {
+      return evaluate(position.fen());
+    }
+
+    for (const move of position.moves()) {
+      let childPosition: Chess = new Chess(position.fen());
+      childPosition.move(move);
+      let score: number = alphaBetaMin(childPosition, depth - 1, alpha, beta);
+      if (score >= beta) {
+        return beta; // fail hard beta-cutoff
+      }
+      if (score > alpha) {
+        alpha = score; // alpha acts like max in MiniMax
+      }
+    }
+    return alpha;
+  };
+
+  const alphaBetaMin = (
+    position: Chess,
+    depth: number,
+    alpha: number,
+    beta: number
+  ): number => {
+    if (depth === 0 || position.gameOver()) {
+      return evaluate(position.fen());
+    }
+
+    for (const move of position.moves()) {
+      let childPosition: Chess = new Chess(position.fen());
+      childPosition.move(move);
+      let score: number = alphaBetaMax(childPosition, depth - 1, alpha, beta); // Corrected order of arguments
+      if (score <= alpha) {
+        return alpha; // fail hard alpha-cutoff
+      }
+      if (score < beta) {
+        beta = score; // beta acts like min in MiniMax
+      }
+    }
+    return beta;
+  };
+
   // This returns a number representing the eval of the current position
   // A larger number means white it better, and a smaller number means black is better
   const evaluate = (fen: string): number => {
-    const blackMaterial = getBlackMaterial(fen);
-    const whiteMaterial = getWhiteMaterial(fen);
+    const blackMaterial = getBlackMaterial(fen) / 100;
+    const whiteMaterial = getWhiteMaterial(fen) / 100;
     const blackPieceSquareEval = pieceSquareEval(fen, false);
     const whitePieceSquareEval = pieceSquareEval(fen, true);
 
+    // console.log("Black material: " + blackMaterial);
+    // console.log("White material: " + whiteMaterial);
+    // console.log("Black piece square: " + blackPieceSquareEval);
+    // console.log("White piece square: " + whitePieceSquareEval);
+
+    // console.error(
+    //   "Total eval: " +
+    //     (whiteMaterial -
+    //       blackMaterial +
+    //       whitePieceSquareEval -
+    //       blackPieceSquareEval)
+    // );
     return (
       whiteMaterial -
       blackMaterial +
@@ -404,13 +493,92 @@ export default function App() {
     return whiteMaterial;
   };
 
+  // --- Utility methods for moves ---
+
+  const isACapture = (move: string): boolean => {
+    if (/x/.test(move)) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  // *NOTE* - This function only works if there is a valid capture to take the piece in question
+  const pieceIsHanging = (positionFen: string, square: string): boolean => {
+    let position: Chess = new Chess(positionFen);
+
+    // const square: string = captureMove.replace(/[pnbrqkPNBRQK]/g, "");
+
+    for (const followUpMove of position.moves()) {
+      const tempPosition = new Chess(position.fen());
+      const followUpMoveObj = tempPosition.move(followUpMove);
+
+      if (followUpMoveObj)
+        if (
+          followUpMoveObj.captured !== undefined ||
+          (followUpMoveObj.captured !== null &&
+            followUpMoveObj.san.includes(square))
+        ) {
+          return false;
+        }
+    }
+    return true;
+  };
+
   return (
-    <div className="board">
-      <Chessboard
-        id="BasicBoard"
-        position={currentPosition.fen()}
-        onPieceDrop={onDrop}
-      />
+    <div className="mainContainer">
+      <div className="board">
+        <Chessboard
+          id="BasicBoard"
+          position={currentPosition.fen()}
+          onPieceDrop={onDrop}
+          onSquareClick={onSquareClick}
+          onSquareRightClick={onSquareRightClick}
+          customSquareStyles={Object.assign(
+            {},
+            selectedSquare
+              ? {
+                  [selectedSquare]: {
+                    backgroundColor: "rgba(255, 255, 0, 0.4)",
+                  },
+                }
+              : {},
+            startingSquare
+              ? {
+                  [startingSquare]: {
+                    backgroundColor: "rgba(70, 195, 206, 0.6)",
+                  },
+                }
+              : {},
+            targetSquare
+              ? {
+                  [targetSquare]: {
+                    backgroundColor: "rgba(70, 195, 206, 0.6)",
+                  },
+                }
+              : {}
+          )}
+        />
+      </div>
+      <aside className="movesContainer">
+        <div className="moveList">
+          {moveList.map((move, index) => (
+            <div key={index} className="move">
+              <p>{index + 1}:</p>
+              <p>
+                {move.piece === "p"
+                  ? move.from
+                  : move.piece.toUpperCase() + move.from}
+              </p>
+              <p>
+                {move.piece === "p"
+                  ? move.to
+                  : move.piece.toUpperCase() + move.to}
+              </p>
+            </div>
+          ))}
+        </div>
+      </aside>
     </div>
   );
 }
