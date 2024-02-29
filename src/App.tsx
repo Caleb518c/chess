@@ -172,9 +172,7 @@ export default function App() {
       colorLastMove(move);
 
       if (isACapture(move.san)) {
-        window.alert("This move is a capture");
         if (pieceIsHanging(childPosition.fen(), move.san)) {
-          window.alert("This piece was hanging");
         }
       }
 
@@ -223,7 +221,6 @@ export default function App() {
 
       // This forces to engine to take a piece if it is hanging
       if (isACapture(move) && pieceIsHanging(childPosition.fen(), move)) {
-        window.alert("The engine sees a peice that is hanging");
         // @ts-ignore
         const moveObj: Move = currentPosition.move(move);
         colorLastMove(moveObj);
