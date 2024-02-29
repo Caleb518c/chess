@@ -1,3 +1,5 @@
+<h1>Enough Monkeys</h1> <br>
+
 ![Enough Monkeys Logo](https://github.com/caleb518c/chess/blob/main/public/smallLogo.png?raw=true)
 
 ToDo: <br>
