@@ -1,3 +1,6 @@
+![alt text](https://github.com/caleb518c/chess/blob/main/public/favicon.ico?raw=true)
+
+
 ToDo: <br>
   Short term:<br>
     - Allow computer to play checkmate <br>
