@@ -221,6 +221,7 @@ export default function App() {
 
       // This forces to engine to take a piece if it is hanging
       if (isACapture(move) && pieceIsHanging(childPosition.fen(), move)) {
+        // This ignore doesn't matter because you can't even enter the if statement if move is null
         // @ts-ignore
         const moveObj: Move = currentPosition.move(move);
         colorLastMove(moveObj);
@@ -229,6 +230,7 @@ export default function App() {
       }
 
       if (evaluate(childPosition.fen()) === bestScore) {
+        // Same as above
         // @ts-ignore
         const moveObj: Move = currentPosition.move(move);
         colorLastMove(moveObj);
@@ -287,7 +289,7 @@ export default function App() {
   };
 
   // This returns a number representing the eval of the current position
-  // A larger number means white it better, and a smaller number means black is better
+  // A larger number means white is better, and a smaller number means black is better
   const evaluate = (fen: string): number => {
     const blackMaterial = getBlackMaterial(fen) / 100;
     const whiteMaterial = getWhiteMaterial(fen) / 100;
