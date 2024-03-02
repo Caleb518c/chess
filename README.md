@@ -1,7 +1,9 @@
 <h1>Enough Monkeys</h1> <br>
-<div display="flexbox" justify-content="center">
+
 ![Enough Monkeys Logo](https://github.com/caleb518c/chess/blob/main/public/smallLogo.png?raw=true)
-</div>
+
+Enough Monkeys is a chess engine written from scratch in React and Typescript. The chessboard GUI is built off of react-chessboard 
+
 
 ToDo: <br>
 Short term:<br> - Allow computer to play checkmate <br> - Provide message for when checkmate is played<br> - Make the last move highlighted allways show for black (for some reason it doesn't highlight blacks last move sometime)<br> - Fix promotion <br>
