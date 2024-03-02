@@ -2,7 +2,7 @@
 
 ![Enough Monkeys Logo](https://github.com/caleb518c/chess/blob/main/public/smallLogo.png?raw=true)
 
-Enough Monkeys is a chess engine written from scratch in React and Typescript. The chessboard GUI is built off of [react-chessboard](ttps://www.npmjs.com/package/react-chessboard)
+Enough Monkeys is a chess engine written from scratch in React and Typescript. The chessboard GUI is built off of [react-chessboard](https://www.npmjs.com/package/react-chessboard)
 
 
 ToDo: <br>
