@@ -1,7 +1,18 @@
 import { useState } from "react";
 import { Chessboard } from "react-chessboard";
 import { Chess, Piece, Move, PartialMove } from "chess.ts";
-import "./App.css";
+import  "./App.css";
+
+import logo from "./smallLogo.png";
+
+export function isACapture(move: string): boolean{
+  if (/x/.test(move)) {
+    return true;
+  } else {
+    return false;
+  }
+};
+
 
 export default function App() {
   const [currentPosition, setCurrentPosition] = useState(new Chess());
@@ -169,11 +180,10 @@ export default function App() {
 
     if (move) {
       const childPosition = new Chess(currentPosition.fen());
-      colorLastMove(move);
 
-      if (isACapture(move.san)) {
-        if (pieceIsHanging(childPosition.fen(), move.san)) {
-        }
+      if (currentPosition.inCheckmate()) {
+        window.alert("You Win!");
+        return true;
       }
 
       // This is for the failsafe below
@@ -185,13 +195,16 @@ export default function App() {
       // This acts as a failsafe in the case where the computer doesn't play a move for some reason,
       // which it likes to do and I have no idea why...
       if (currentPosition.fen() === currentPositionCopy.fen()) {
-        console.error("No move selected. First legal move played instead.");
-        currentPosition.move(currentPosition.moves()[0]);
+        console.error("No move selected. Random move played instead.");
+        let randomNumber: number = Math.floor(Math.random() * currentPosition.moves.length); 
+        // @ts-ignore
+        const moveObj: Move = currentPosition.move(currentPosition.moves()[randomNumber]);
+        colorLastMove(moveObj);
         setCurrentPosition(new Chess(currentPosition.fen()));
       }
       return true;
     } else {
-      return false;
+      return false; 
     }
   };
 
@@ -203,21 +216,21 @@ export default function App() {
       Number.MAX_SAFE_INTEGER
     );
 
-    console.log("All legal moves: " + currentPosition.moves());
+    // console.log("All legal moves: " + currentPosition.moves());
 
     for (const move of currentPosition.moves()) {
       let childPosition: Chess = new Chess(currentPosition.fen());
       childPosition.move(move);
 
-      console.warn("Move: " + move);
-      console.log("Is a capture: " + isACapture(move));
-      console.log(
-        "Is hanging: " +
-          pieceIsHanging(
-            childPosition.fen(),
-            move.replace(/[pnbrqkPNBRQKx+#]/g, "")
-          )
-      );
+      // console.warn("Move: " + move);
+      // console.log("Is a capture: " + isACapture(move));
+      // console.log(
+      //   "Is hanging: " +
+      //     pieceIsHanging(
+      //       childPosition.fen(),
+      //       move.replace(/[pnbrqkPNBRQKx+#]/g, "")
+      //     )
+      // );
 
       // This forces to engine to take a piece if it is hanging
       if (isACapture(move) && pieceIsHanging(childPosition.fen(), move)) {
@@ -494,13 +507,13 @@ export default function App() {
 
   // --- Utility methods for moves ---
 
-  const isACapture = (move: string): boolean => {
-    if (/x/.test(move)) {
-      return true;
-    } else {
-      return false;
-    }
-  };
+  // const isACapture = (move: string): boolean => {
+  //   if (/x/.test(move)) {
+  //     return true;
+  //   } else {
+  //     return false;
+  //   }
+  // };
 
   // *NOTE* - This function only works if there is a valid capture to take the piece in question
   const pieceIsHanging = (positionFen: string, square: string): boolean => {

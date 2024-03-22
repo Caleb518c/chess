@@ -16,7 +16,7 @@ body {
 }
 
 .board {
-    width: 85vh;
+    width: 80vh;
     border-radius: 5px;
     overflow: hidden;
 }
