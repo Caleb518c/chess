@@ -11,9 +11,8 @@
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "chess.js": "^1.0.0-beta.7",
-    "chess.ts": "^0.16.2",
+    "chessboardjsx": "^2.4.7",
     "react": "^18.2.0",
-    "react-chessboard": "^4.3.2",
     "react-dom": "^18.2.0",
     "react-router": "^6.23.1",
     "react-router-dom": "^6.23.1",
@@ -57,10 +56,10 @@
     "jest": "^27.5.1",
     "react-test-renderer": "^18.2.0"
   },
-  "jest":{
-    "moduleNameMapper":{
-         "\\.(css|less|sass|scss)$": "<rootDir>/__mocks__/styleMock.js",
-         "\\.(gif|ttf|eot|svg)$": "<rootDir>/__mocks__/fileMock.js"
+  "jest": {
+    "moduleNameMapper": {
+      "\\.(css|less|sass|scss)$": "<rootDir>/__mocks__/styleMock.js",
+      "\\.(gif|ttf|eot|svg)$": "<rootDir>/__mocks__/fileMock.js"
     }
   }
 }

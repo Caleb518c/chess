@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Chessboard } from "react-chessboard";
-import { Chess, Piece, Move, PartialMove } from "chess.ts";
+import { useState, useEffect } from "react";
+import Chessboard from "chessboardjsx";
+import { Chess, Move, Square } from "chess.js";
 
 import { evaluate } from "../index";
 
@@ -10,11 +10,17 @@ const Game = () => {
   const [selectedSquare, setSelectedSquare] = useState<string>("");
   const [startingSquare, setStartingSquare] = useState<string>("");
   const [targetSquare, setTargetSquare] = useState<string>("");
+  const [isThinking, setIsThinking] = useState<boolean>(false);
+
+  useEffect(() => {
+    console.log("Computer is thinking!");
+  }, [isThinking]);
 
   const onSquareRightClick = (square: string) => {
     setSelectedSquare(square);
   };
 
+  // This removes the highlighted square when you click on a new square
   const onSquareClick = (square: string) => {
     setSelectedSquare("");
   };
@@ -30,92 +36,74 @@ const Game = () => {
     moveList.push(move);
   };
 
-  const onDrop = (sourceSquare: string, targetSquare: string): boolean => {
-    console.error("All legal moves: " + currentPosition.moves());
+  interface onDropParams {
+    sourceSquare: string;
+    targetSquare: string;
+  }
+
+  const onDrop = async ({
+    sourceSquare,
+    targetSquare,
+  }: onDropParams): Promise<boolean> => {
+    try {
+      const postionTestCopy = new Chess(currentPosition.fen());
+      postionTestCopy.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: "q",
+      });
+    } catch (e) {
+      return false;
+    }
 
     const move = currentPosition.move({
       from: sourceSquare,
       to: targetSquare,
+      promotion: "q",
     });
 
     if (move) {
-      // window.alert(move.to);
-      // // @ts-ignore
-      // if (currentPosition.isPromotion(move.to)) {
-      //   // @ts-ignore
-      //   currentPosition.put({ type: "q", color: "w" }, move.to);
-      // }
-
-      const childPosition = new Chess(currentPosition.fen());
       colorLastMove(move);
-
-      if (isACapture(move.san)) {
-        if (pieceIsHanging(childPosition.fen(), move.san)) {
-        }
-      }
-
-      // This is for the failsafe below
-      const currentPositionCopy: Chess = new Chess(currentPosition.fen());
-
       setCurrentPosition(new Chess(currentPosition.fen()));
-      computerMove();
 
-      // This acts as a failsafe in the case where the computer doesn't play a move for some reason,
-      // which it likes to do and I have no idea why...
-      if (currentPosition.fen() === currentPositionCopy.fen()) {
-        console.error("No move selected. First legal move played instead.");
-        currentPosition.move(currentPosition.moves()[0]);
-        setCurrentPosition(new Chess(currentPosition.fen()));
-      }
+      setTimeout(() => {
+        if (currentPosition.isCheckmate()) {
+          if (currentPosition.turn() === "b") {
+            window.alert("You win!");
+          } else {
+            window.alert("You lose...");
+          }
+        }
+      }, 100);
+
+      setTimeout(() => {
+        setIsThinking(true);
+        computerMove();
+        setIsThinking(false);
+      }, 100);
+
       return true;
     } else {
       return false;
     }
   };
 
-  const computerMove = () => {
-    const bestScore: number = alphaBetaMax(
-      currentPosition,
-      2,
-      Number.MIN_SAFE_INTEGER,
-      Number.MAX_SAFE_INTEGER
-    );
+  const computerMove = async (): Promise<void> => {
+    // console.log("All legal moves: " + currentPosition.moves());
 
-    console.log("All legal moves: " + currentPosition.moves());
-
-    for (const move of currentPosition.moves()) {
-      let childPosition: Chess = new Chess(currentPosition.fen());
-      childPosition.move(move);
-
-      console.warn("Move: " + move);
-      console.log("Is a capture: " + isACapture(move));
-      console.log(
-        "Is hanging: " +
-          pieceIsHanging(
-            childPosition.fen(),
-            move.replace(/[pnbrqkPNBRQKx+#]/g, "")
-          )
-      );
-
-      // This forces to engine to take a piece if it is hanging
-      if (isACapture(move) && pieceIsHanging(childPosition.fen(), move)) {
-        // This ignore doesn't matter because you can't even enter the if statement if move is null
+    return new Promise((resolve) => {
+      const findBestMove = (position: Chess, depth: number): string => {
+        let { move } = alphaBetaMax(position, depth, -Infinity, Infinity);
+        console.log("Best move: " + move);
         // @ts-ignore
-        const moveObj: Move = currentPosition.move(move);
-        colorLastMove(moveObj);
-        setCurrentPosition(new Chess(currentPosition.fen()));
-        return;
-      }
+        return move;
+      };
 
-      if (evaluate(childPosition.fen()) === bestScore) {
-        // Same as above
-        // @ts-ignore
-        const moveObj: Move = currentPosition.move(move);
-        colorLastMove(moveObj);
-        setCurrentPosition(new Chess(currentPosition.fen()));
-        return;
-      }
-    }
+      currentPosition.move(findBestMove(currentPosition, 4));
+      // colorLastMove(moveObj);
+      setCurrentPosition(new Chess(currentPosition.fen()));
+      resolve();
+    });
   };
 
   const alphaBetaMax = (
@@ -123,23 +111,30 @@ const Game = () => {
     depth: number,
     alpha: number,
     beta: number
-  ): number => {
-    if (depth === 0 || position.gameOver()) {
-      return evaluate(position.fen());
+  ): { score: number; move: string | null } => {
+    if (depth === 0 || position.isGameOver()) {
+      return { score: evaluate(position.fen()), move: null };
     }
+
+    let maxScore = -Infinity;
+    let bestMove = null;
 
     for (const move of position.moves()) {
       let childPosition: Chess = new Chess(position.fen());
-      childPosition.move(move);
-      let score: number = alphaBetaMin(childPosition, depth - 1, alpha, beta);
+      let moveObj = childPosition.move(move);
+      let { score } = alphaBetaMin(childPosition, depth - 1, alpha, beta);
       if (score >= beta) {
-        return beta; // fail hard beta-cutoff
+        return { score: beta, move: null }; // fail hard beta-cutoff
+      }
+      if (score > maxScore) {
+        maxScore = score;
+        bestMove = move;
       }
       if (score > alpha) {
         alpha = score; // alpha acts like max in MiniMax
       }
     }
-    return alpha;
+    return { score: maxScore, move: bestMove };
   };
 
   const alphaBetaMin = (
@@ -147,23 +142,30 @@ const Game = () => {
     depth: number,
     alpha: number,
     beta: number
-  ): number => {
-    if (depth === 0 || position.gameOver()) {
-      return evaluate(position.fen());
+  ): { score: number; move: string | null } => {
+    if (depth === 0 || position.isGameOver()) {
+      return { score: evaluate(position.fen()), move: null };
     }
+
+    let minScore = Infinity;
+    let bestMove = null;
 
     for (const move of position.moves()) {
       let childPosition: Chess = new Chess(position.fen());
       childPosition.move(move);
-      let score: number = alphaBetaMax(childPosition, depth - 1, alpha, beta); // Corrected order of arguments
+      let { score } = alphaBetaMax(childPosition, depth - 1, alpha, beta);
       if (score <= alpha) {
-        return alpha; // fail hard alpha-cutoff
+        return { score: alpha, move: null }; // fail hard alpha-cutoff
+      }
+      if (score < minScore) {
+        minScore = score;
+        bestMove = move;
       }
       if (score < beta) {
         beta = score; // beta acts like min in MiniMax
       }
     }
-    return beta;
+    return { score: minScore, move: bestMove };
   };
 
   // --- Utility methods for moves ---
@@ -176,26 +178,13 @@ const Game = () => {
     }
   };
 
-  // *NOTE* - This function only works if there is a valid capture to take the piece in question
-  const pieceIsHanging = (positionFen: string, square: string): boolean => {
-    let position: Chess = new Chess(positionFen);
+  const pieceWasHanging = (positionFen: string, square: Square): boolean => {
+    let tempPosition: Chess = new Chess(positionFen);
+    const attackingColor = "w";
 
-    // const square: string = captureMove.replace(/[pnbrqkPNBRQK]/g, "");
-
-    for (const followUpMove of position.moves()) {
-      const tempPosition = new Chess(position.fen());
-      const followUpMoveObj = tempPosition.move(followUpMove);
-
-      if (followUpMoveObj)
-        if (
-          followUpMoveObj.captured !== undefined ||
-          (followUpMoveObj.captured !== null &&
-            followUpMoveObj.san.includes(square))
-        ) {
-          return false;
-        }
-    }
-    return true;
+    if (tempPosition.isAttacked(square, attackingColor) === false) {
+      return true;
+    } else return false;
   };
 
   return (
@@ -205,14 +194,14 @@ const Game = () => {
       </nav>
       <div className="board">
         <Chessboard
-          id="BasicBoard"
-          customDarkSquareStyle={{ backgroundColor: "#92afb5" }}
-          customLightSquareStyle={{ backgroundColor: "white" }}
+          width={800}
           position={currentPosition.fen()}
-          onPieceDrop={onDrop}
+          onDrop={onDrop}
+          darkSquareStyle={{ backgroundColor: "#92afb5" }}
+          lightSquareStyle={{ backgroundColor: "white" }}
           onSquareClick={onSquareClick}
           onSquareRightClick={onSquareRightClick}
-          customSquareStyles={Object.assign(
+          squareStyles={Object.assign(
             {},
             selectedSquare
               ? {

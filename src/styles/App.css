@@ -89,7 +89,6 @@ body {
 }
 
 .board {
-    width: 85vh;
     border-radius: 5px;
     overflow: hidden;
 }
