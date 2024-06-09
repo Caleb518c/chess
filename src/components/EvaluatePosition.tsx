@@ -1,4 +1,4 @@
-import { Chess, Piece, Move, PartialMove } from "chess.ts";
+import { Chess, Piece, Move, Square } from "chess.js";
 
 // --- Piece-Square Tables ---
 // These tables map out a chess board from white's perspective reading each square
@@ -138,18 +138,6 @@ const evaluate = (fen: string): number => {
   const blackPieceSquareEval = pieceSquareEval(fen, false);
   const whitePieceSquareEval = pieceSquareEval(fen, true);
 
-  // console.log("Black material: " + blackMaterial);
-  // console.log("White material: " + whiteMaterial);
-  // console.log("Black piece square: " + blackPieceSquareEval);
-  // console.log("White piece square: " + whitePieceSquareEval);
-
-  // console.error(
-  //   "Total eval: " +
-  //     (whiteMaterial -
-  //       blackMaterial +
-  //       whitePieceSquareEval -
-  //       blackPieceSquareEval)
-  // );
   return (
     whiteMaterial - blackMaterial + whitePieceSquareEval - blackPieceSquareEval
   );
@@ -170,7 +158,7 @@ const pieceSquareEval = (positionFen: string, whiteToMove: boolean): number => {
   if (whiteToMove) {
     for (const file of files) {
       for (const rank of ranks) {
-        const square: string = file + rank;
+        const square: Square = (file + rank) as Square;
         const pieceOnSquare = positionObj.get(square);
         if (pieceOnSquare && pieceOnSquare.color === "w") {
           switch (pieceOnSquare.type) {
@@ -203,7 +191,7 @@ const pieceSquareEval = (positionFen: string, whiteToMove: boolean): number => {
   } else {
     for (const file of files) {
       for (const rank of ranks) {
-        const square: string = file + rank;
+        const square: Square = (file + rank) as Square;
         const pieceOnSquare = positionObj.get(square);
 
         if (pieceOnSquare && pieceOnSquare.color === "b") {

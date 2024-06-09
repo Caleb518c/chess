@@ -99,8 +99,8 @@ const Game = () => {
         return move;
       };
 
-      currentPosition.move(findBestMove(currentPosition, 4));
-      // colorLastMove(moveObj);
+      const moveObj = currentPosition.move(findBestMove(currentPosition, 4));
+      colorLastMove(moveObj);
       setCurrentPosition(new Chess(currentPosition.fen()));
       resolve();
     });

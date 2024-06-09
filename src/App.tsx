@@ -9,7 +9,7 @@ export default function App() {
         <nav className="navBar">
           <ul>
             <li>
-              <Link to="/">Home</Link>
+              <Link to="/home">Home</Link>
             </li>
             <li>
               <Link to="Game">Play</Link>
@@ -18,7 +18,8 @@ export default function App() {
           </ul>
         </nav>
         <Routes>
-          <Route index path="/" Component={Home}></Route>
+          <Route path="/" Component={Home}></Route>
+          <Route path="/home" Component={Home}></Route>
           <Route path="/Game" Component={Game}></Route>
         </Routes>
       </main>
