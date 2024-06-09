@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/chess/static/css/main.62a83d77.css",
-    "main.js": "/chess/static/js/main.10e8e066.js",
-    "static/js/787.e54c58c5.chunk.js": "/chess/static/js/787.e54c58c5.chunk.js",
-    "static/media/testLogo.png": "/chess/static/media/testLogo.73bf30ca74124d244c49.png",
-    "index.html": "/chess/index.html",
-    "main.62a83d77.css.map": "/chess/static/css/main.62a83d77.css.map",
-    "main.10e8e066.js.map": "/chess/static/js/main.10e8e066.js.map",
-    "787.e54c58c5.chunk.js.map": "/chess/static/js/787.e54c58c5.chunk.js.map"
+    "main.css": "/home/static/css/main.62a83d77.css",
+    "main.js": "/home/static/js/main.69366fbc.js",
+    "static/js/787.e54c58c5.chunk.js": "/home/static/js/787.e54c58c5.chunk.js",
+    "static/media/testLogo.png": "/home/static/media/testLogo.73bf30ca74124d244c49.png",
+    "index.html": "/home/index.html",
+    "main.62a83d77.css.map": "/home/static/css/main.62a83d77.css.map",
+    "main.69366fbc.js.map": "/home/static/js/main.69366fbc.js.map",
+    "787.e54c58c5.chunk.js.map": "/home/static/js/787.e54c58c5.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.62a83d77.css",
-    "static/js/main.10e8e066.js"
+    "static/js/main.69366fbc.js"
   ]
 }
