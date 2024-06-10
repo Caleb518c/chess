@@ -1,152 +1,295 @@
-import { Chess, Piece, Move, Square } from "chess.js";
+import { Chess, Piece, Move, Square, Color } from "chess.js";
+import {
+  blackPawnSquares,
+  whitePawnSquares,
+  blackBishopSquares,
+  whiteBishopSquares,
+  blackKnightSquares,
+  whiteKnightSquares,
+  blackRookSquares,
+  whiteRookSquares,
+  blackQueenSquares,
+  whiteQueenSquares,
+  blackKingSquaresEarlyAndMiddleGame,
+  whiteKingSquaresEarlyAndMiddleGame,
+  blackKingSquaresEndGame,
+  whiteKingSquaresEndGame,
+} from "../index";
 
-// --- Piece-Square Tables ---
-// These tables map out a chess board from white's perspective reading each square
-// left to right, then top to bottom, just like FEN notation would.
-// The tables themselves and their descriptions are pulled directly from the
-// chessprogramming wiki page: https://www.chessprogramming.org/Simplified_Evaluation_Function#Piece-Square_Tables
-// *Note*: My auto formatting fucks up how the arrays look visually, but their contents
-// are still identical to how they would look on a chessboad.
+const initializeZobrist = (): Map<string, number> => {
+  const zobristTable = new Map<string, number>();
+  for (let position = 0; position < 64; position++) {
+    zobristTable.set(
+      `${position}_P`,
+      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+    );
+    zobristTable.set(
+      `${position}_p`,
+      Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
+    );
+  }
+  return zobristTable;
+};
 
-// "For pawns we simply encourage the pawns to advance. Additionally we try to
-// discourage the engine from leaving central pawns unmoved. The problem I could
-// see here is that this is contradictory to keeping pawns in front of the king.
-// We also ignore the factor whether the pawn is passed or not. So more advanced
-// evaluation is called for, especially that "pawns are soul of the game"."
-const blackPawnSquares: number[] = [
-  0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, -20, -20, 10, 10, 5, 5, -5, -10, 0, 0, -10,
-  -5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, 5, 10, 25, 25, 10, 5, 5, 10, 10, 20, 30,
-  30, 20, 10, 10, 50, 50, 50, 50, 50, 50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0,
-];
+const zobristTable = initializeZobrist();
 
-const whitePawnSquares: number[] = [
-  0, 0, 0, 0, 0, 0, 0, 0, 50, 50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30,
-  20, 10, 10, 5, 5, 10, 25, 25, 10, 5, 5, 0, 0, 0, 20, 20, 0, 0, 0, 5, -5, -10,
-  0, 0, -10, -5, 5, 5, 10, 10, -20, -20, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0,
-];
+const generatePawnHashKey = (fen: string): number => {
+  let key: number = 0;
+  const fenParts = fen.split(" ");
+  const fenBoard = fenParts[0];
+  let rank = 7;
+  let file = 0;
 
-// With knights we simply encourage them to go to the center. Standing on the edge
-// is a bad idea. Standing in the corner is a terrible idea. Probably it was Tartakover
-// who said that "one piece stands badly, the whole game stands badly". And knights move slowly.
-const blackKnightSquares: number[] = [
-  -50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 5, 5, 0, -20, -40, -30,
-  5, 10, 15, 15, 10, 5, -30, -30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 15, 20, 20,
-  15, 5, -30, -30, 0, 10, 15, 15, 10, 0, -30, -40, -20, 0, 0, 0, 0, -20, -40,
-  -50, -40, -30, -30, -30, -30, -40, -50,
-];
+  // Iterate over the FEN board positions
+  for (let i = 0; i < fenBoard.length; i++) {
+    const char = fenBoard.charAt(i);
 
-const whiteKnightSquares: number[] = [
-  -50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 0, 0, 0, -20, -40, -30,
-  0, 10, 15, 15, 10, 0, -30, -30, 5, 15, 20, 20, 15, 5, -30, -30, 0, 15, 20, 20,
-  15, 0, -30, -30, 5, 10, 15, 15, 10, 5, -30, -40, -20, 0, 5, 5, 0, -20, -40,
-  -50, -40, -30, -30, -30, -30, -40, -50,
-];
+    if (char === "/") {
+      rank--;
+      file = 0;
+    } else if ("12345678".indexOf(char) !== -1) {
+      file += parseInt(char, 10);
+    } else {
+      // Piece is a pawn
+      if (char === "P") {
+        key ^= zobristTable.get(`${rank * 8 + file}_P`)!;
+      } else if (char === "p") {
+        key ^= zobristTable.get(`${rank * 8 + file}_p`)!;
+      }
+      file++;
+    }
+  }
 
-// We avoid corners and borders. Additionally we prefer squares like b3, c4, b5, d3
-// and the central ones. Moreover, I wouldn't like to exchange white bishop at d3 (or c3)
-//  for black knight at e4, so squares at c3 (f3) have value of 10. As a result white bishop
-// at d3 (c3) is worth (330+10) and black knight at e4 is worth (320+20). So the choice of
-// whether to exchange or not should depend on other issues. On the contrary white bishop
-// at e4 (330+10) would be captured by black knight from f6 (320+10). White bishop at g5 (330+5)
-// won't capture black knight at f6 (320+10).
-const blackBishopSquares: number[] = [
-  -20, -10, -10, -10, -10, -10, -10, -20, -10, 5, 0, 0, 0, 0, 5, -10, -10, 10,
-  10, 10, 10, 10, 10, -10, -10, 0, 10, 10, 10, 10, 0, -10, -10, 5, 5, 10, 10, 5,
-  5, -10, -10, 0, 5, 10, 10, 5, 0, -10, -10, 0, 0, 0, 0, 0, 0, -10, -20, -10,
-  -10, -10, -10, -10, -10, -20,
-];
+  return key;
+};
 
-const whiteBishopSquares: number[] = [
-  -20, -10, -10, -10, -10, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5,
-  10, 10, 5, 0, -10, -10, 5, 5, 10, 10, 5, 5, -10, -10, 0, 10, 10, 10, 10, 0,
-  -10, -10, 10, 10, 10, 10, 10, 10, -10, -10, 5, 0, 0, 0, 0, 5, -10, -20, -10,
-  -10, -10, -10, -10, -10, -20,
-];
+const pawnHashTable = new Map<number, number>();
 
-// The only ideas which came to my mind was to centralize, occupy the 7th rank,
-// and avoid a, h columns (in order not to defend pawn b3 from a3). So generally
-// this is Gerbil like. (https://www.chessprogramming.org/Gerbil)
-const blackRookSquares: number[] = [
-  0, 0, 0, 5, 5, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5,
-  -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5,
-  5, 10, 10, 10, 10, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0,
-];
-const whiteRookSquares: number[] = [
-  0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, 10, 10, 10, 10, 5, -5, 0, 0, 0, 0, 0, 0,
-  -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0,
-  -5, -5, 0, 0, 0, 0, 0, 0, -5, 0, 0, 0, 5, 5, 0, 0, 0,
-];
+function evaluatePawnStructure(fen: string): number {
+  let evaluation = 0;
+  const whitePawns = new Set<number>();
+  const blackPawns = new Set<number>();
 
-// Generally with queen I marked places where I wouldn't like to have a queen.
-// Additionally I slightly marked central squares to keep the queen in the centre
-// and b3, c2 squares (Paweł's suggestion). The rest should be done by tactics.
-const blackQueenSquares: number[] = [
-  -20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 5, 0, 0, 0, 0, -10, -10, 5, 5,
-  5, 5, 5, 0, -10, 0, 0, 5, 5, 5, 5, 0, -5, -5, 0, 5, 5, 5, 5, 0, -5, -10, 0, 5,
-  5, 5, 5, 0, -10, -10, 0, 0, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10,
-  -20,
-];
+  // Parse the FEN to collect positions of white and black pawns
+  const fenParts = fen.split(" ");
+  const fenBoard = fenParts[0];
+  let rank = 7;
+  let file = 0;
 
-const whiteQueenSquares: number[] = [
-  -20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, 5,
-  5, 5, 5, 0, -10, -5, 0, 5, 5, 5, 5, 0, -5, 0, 0, 5, 5, 5, 5, 0, -5, -10, 5, 5,
-  5, 5, 5, 0, -10, -10, 0, 5, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10,
-  -20,
-];
+  // Iterate over the FEN board positions
+  for (let i = 0; i < fenBoard.length; i++) {
+    const char = fenBoard.charAt(i);
 
-// --- Note about the king ---
-// Different tables are used for the opening and middle game, and the end game.
-// The first priortises king saftey by castling, and the second priortises king activity.
+    if (char === "/") {
+      rank--;
+      file = 0;
+    } else if ("12345678".indexOf(char) !== -1) {
+      file += parseInt(char, 10);
+    } else {
+      // Piece is a pawn
+      const position = rank * 8 + file;
+      if (char === "P") {
+        whitePawns.add(position);
+      } else if (char === "p") {
+        blackPawns.add(position);
+      }
+      file++;
+    }
+  }
 
-// Additionally we should define where the ending begins. For me it might be either if:
-// 1. Both sides have no queens or
-// 2. Every side which has a queen has additionally no other pieces or one minorpiece maximum.
+  // Evaluate white pawns
+  whitePawns.forEach((position) => {
+    const file = position % 8;
+    const rank = Math.floor(position / 8);
 
-const blackKingSquaresEarlyAndMiddleGame: number[] = [
-  20, 30, 10, 0, 0, 10, 30, 20, 20, 20, 0, 0, 0, 0, 20, 20, -10, -20, -20, -20,
-  -20, -20, -20, -10, -20, -30, -30, -40, -40, -30, -30, -20, -30, -40, -40,
-  -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40,
-  -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
-];
+    // Check for doubled pawns
+    let isDoubled = false;
+    whitePawns.forEach((p) => {
+      if (p !== position && p % 8 === file) {
+        isDoubled = true;
+      }
+    });
+    if (isDoubled) {
+      evaluation -= 20; // Penalty for doubled pawn
+    }
 
-const whiteKingSquaresEarlyAndMiddleGame: number[] = [
-  -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40,
-  -30, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40,
-  -40, -30, -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20,
-  -20, -20, -10, 20, 20, 0, 0, 0, 0, 20, 20, 20, 30, 10, 0, 0, 10, 30, 20,
-];
+    // Check for isolated pawns
+    let isIsolated = true;
+    if (file > 0) {
+      whitePawns.forEach((p) => {
+        if (p !== position && (p % 8 === file - 1 || p % 8 === file + 1)) {
+          isIsolated = false;
+        }
+      });
+    } else if (file < 7) {
+      whitePawns.forEach((p) => {
+        if (p !== position && (p % 8 === file - 1 || p % 8 === file + 1)) {
+          isIsolated = false;
+        }
+      });
+    }
+    if (isIsolated) {
+      evaluation -= 10; // Penalty for isolated pawn
+    }
 
-const blackKingSquaresEndGame: number[] = [
-  -50, -30, -30, -30, -30, -30, -30, -50, -30, -30, 0, 0, 0, 0, -30, -30, -30,
-  -10, 20, 30, 30, 20, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30, -10,
-  30, 40, 40, 30, -10, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -20, -10,
-  0, 0, -10, -20, -30, -50, -40, -30, -20, -20, -30, -40, -50,
-];
+    // Check for passed pawns
+    let isPassed = true;
+    blackPawns.forEach((p) => {
+      const f = p % 8;
+      const r = Math.floor(p / 8);
+      if (f === file && r > rank) {
+        isPassed = false;
+      }
+    });
+    if (isPassed) {
+      evaluation += 20; // Bonus for passed pawn
+    }
 
-const whiteKingSquaresEndGame: number[] = [
-  -50, -40, -30, -20, -20, -30, -40, -50, -30, -20, -10, 0, 0, -10, -20, -30,
-  -30, -10, 20, 30, 30, 20, -10, -30, -30, -10, 30, 40, 40, 30, -10, -30, -30,
-  -10, 30, 40, 40, 30, -10, -30, -30, -10, 20, 30, 30, 20, -10, -30, -30, -30,
-  0, 0, 0, 0, -30, -30, -50, -30, -30, -30, -30, -30, -30, -50,
-];
+    // Bonus for pawn chains
+    let isPawnChain = false;
+    if (file > 0) {
+      if (whitePawns.has((rank + 1) * 8 + file - 1)) {
+        isPawnChain = true;
+      }
+    }
+    if (file < 7) {
+      if (whitePawns.has((rank + 1) * 8 + file + 1)) {
+        isPawnChain = true;
+      }
+    }
+    if (isPawnChain) {
+      evaluation += 5; // Bonus for pawn chain
+    }
+  });
+
+  // Evaluate black pawns (similar logic, but reverse ranks)
+  blackPawns.forEach((position) => {
+    const file = position % 8;
+    const rank = Math.floor(position / 8);
+
+    // Check for doubled pawns
+    let isDoubled = false;
+    blackPawns.forEach((p) => {
+      if (p !== position && p % 8 === file) {
+        isDoubled = true;
+      }
+    });
+    if (isDoubled) {
+      evaluation += 20; // Penalty for doubled pawn
+    }
+
+    // Check for isolated pawns
+    let isIsolated = true;
+    if (file > 0) {
+      blackPawns.forEach((p) => {
+        if (p !== position && (p % 8 === file - 1 || p % 8 === file + 1)) {
+          isIsolated = false;
+        }
+      });
+    } else if (file < 7) {
+      blackPawns.forEach((p) => {
+        if (p !== position && (p % 8 === file - 1 || p % 8 === file + 1)) {
+          isIsolated = false;
+        }
+      });
+    }
+    if (isIsolated) {
+      evaluation += 10; // Penalty for isolated pawn
+    }
+
+    // Check for passed pawns
+    let isPassed = true;
+    whitePawns.forEach((p) => {
+      const f = p % 8;
+      const r = Math.floor(p / 8);
+      if (f === file && r < rank) {
+        isPassed = false;
+      }
+    });
+    if (isPassed) {
+      evaluation -= 20; // Bonus for passed pawn
+    }
+
+    // Bonus for pawn chains
+    let isPawnChain = false;
+    if (file > 0) {
+      if (blackPawns.has((rank - 1) * 8 + file - 1)) {
+        isPawnChain = true;
+      }
+    }
+    if (file < 7) {
+      if (blackPawns.has((rank - 1) * 8 + file + 1)) {
+        isPawnChain = true;
+      }
+    }
+    if (isPawnChain) {
+      evaluation -= 5; // Bonus for pawn chain
+    }
+  });
+
+  return evaluation;
+}
+
+const pieceIsHanging = (square: Square, positionFen: string): boolean => {
+  const position = new Chess(positionFen);
+
+  if (position.get(square)) {
+    const targetPiece = position.get(square);
+    if (targetPiece.color === "w")
+      if (position.isAttacked(square, "b")) {
+        if (position.isAttacked(square, "w")) {
+          return false;
+        } else {
+          return true;
+        }
+      } else {
+        return false;
+      }
+    else {
+      if (position.isAttacked(square, "w")) {
+        if (position.isAttacked(square, "b")) {
+          return false;
+        } else {
+          return true;
+        }
+      } else {
+        return false;
+      }
+    }
+  } else {
+    return false;
+  }
+};
 
 // This returns a number representing the eval of the current position
 // A larger number means white is better, and a smaller number means black is better
+// eg. 25 mean white is better, and -25 mean black is better
 const evaluate = (fen: string): number => {
-  const blackMaterial = getBlackMaterial(fen) / 100;
-  const whiteMaterial = getWhiteMaterial(fen) / 100;
+  const blackMaterial = getBlackMaterial(fen);
+  const whiteMaterial = getWhiteMaterial(fen);
   const blackPieceSquareEval = pieceSquareEval(fen, false);
   const whitePieceSquareEval = pieceSquareEval(fen, true);
+  const pawnStructureEval = evaluatePawnStructure(fen);
+
+  const materialWeight: number = 2;
+  const pieceSquareEvalWeight: number = 1;
+  const pawnStructureEvalWeight: number = 1;
+
+  console.log("Material:" + (whiteMaterial - blackMaterial));
+  console.log(
+    "Piece square eval:" + (whitePieceSquareEval - blackPieceSquareEval)
+  );
+  console.log("Pawn struct. eval:" + pawnStructureEval);
 
   return (
-    whiteMaterial - blackMaterial + whitePieceSquareEval - blackPieceSquareEval
+    (whiteMaterial - blackMaterial) * materialWeight +
+    (whitePieceSquareEval - blackPieceSquareEval) * pieceSquareEvalWeight
+    // pawnStructureEval * pawnStructureEvalWeight
   );
 };
 
 // This function eventually needs to be changed to handle the end game positioning of the king
 const pieceSquareEval = (positionFen: string, whiteToMove: boolean): number => {
-  // I know this doesn't look ideal, but it is done to make sure that the
-  // useState for the current position isn't fucked up accidentally.
   const positionObj = new Chess(positionFen);
 
   let totalBoardPieceSquareScore = 0;
@@ -316,4 +459,4 @@ const getWhiteMaterial = (fen: string): number => {
   return whiteMaterial;
 };
 
-export { evaluate };
+export { evaluate, pieceIsHanging };

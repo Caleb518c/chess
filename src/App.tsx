@@ -19,6 +19,7 @@ export default function App() {
         </nav>
         <Routes>
           <Route path="/" Component={Home}></Route>
+          <Route path="/chess" Component={Home}></Route>
           <Route path="/home" Component={Home}></Route>
           <Route path="/Game" Component={Game}></Route>
         </Routes>

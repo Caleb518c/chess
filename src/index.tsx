@@ -20,8 +20,23 @@ reportWebVitals();
 
 // -----------Exports-------------
 
-// This is the actual eval function being exported from EvaluatePosition
-export { evaluate } from "./components/EvaluatePosition";
+export { evaluate, pieceIsHanging } from "./components/EvaluatePosition";
+export {
+  blackPawnSquares,
+  whitePawnSquares,
+  blackBishopSquares,
+  whiteBishopSquares,
+  blackKnightSquares,
+  whiteKnightSquares,
+  blackRookSquares,
+  whiteRookSquares,
+  blackQueenSquares,
+  whiteQueenSquares,
+  blackKingSquaresEarlyAndMiddleGame,
+  whiteKingSquaresEarlyAndMiddleGame,
+  blackKingSquaresEndGame,
+  whiteKingSquaresEndGame,
+} from "./components/PieceSquareTables";
 
 // View Component Exports
 export { Home } from "./views/Home";

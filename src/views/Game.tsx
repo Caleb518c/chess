@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Chessboard from "chessboardjsx";
 import { Chess, Move, Square } from "chess.js";
 
-import { evaluate } from "../index";
+import { evaluate, pieceIsHanging } from "../index";
 
 const Game = () => {
   const [currentPosition, setCurrentPosition] = useState(new Chess());
@@ -102,6 +102,7 @@ const Game = () => {
       const moveObj = currentPosition.move(findBestMove(currentPosition, 4));
       colorLastMove(moveObj);
       setCurrentPosition(new Chess(currentPosition.fen()));
+
       resolve();
     });
   };
